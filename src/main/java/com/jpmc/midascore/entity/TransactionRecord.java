@@ -18,13 +18,16 @@ public class TransactionRecord {
     private long recipientId;
     @Column(nullable = false)
     private float amount;
+    @Column(nullable = false)
+    private float incentiveAmount;
 
     protected TransactionRecord() {
 
     }
-    public TransactionRecord(long senderId, long recipientId, float amount) {
+    public TransactionRecord(long senderId, long recipientId, float amount,float incentiveAmount) {
         this.senderId = senderId;
         this.recipientId = recipientId;
         this.amount = amount;
+        this.incentiveAmount = incentiveAmount;
     }
 }
