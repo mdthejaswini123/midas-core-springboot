@@ -1,11 +1,13 @@
 package com.jpmc.midascore;
 import com.jpmc.midascore.entity.TransactionRecord;
 import com.jpmc.midascore.entity.UserRecord;
+import com.jpmc.midascore.foundation.Incentive;
 import com.jpmc.midascore.foundation.Transaction;
 import com.jpmc.midascore.repository.TransactionRepository;
 import com.jpmc.midascore.repository.UserRepository;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -13,9 +15,11 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class KafkaConsumer {
     private final UserRepository userRepository;
     private final TransactionRepository transactionRepository;
-    KafkaConsumer(UserRepository userRepository, TransactionRepository transactionRepository) {
+    public final RestTemplate restTemplate ;
+    KafkaConsumer(UserRepository userRepository, TransactionRepository transactionRepository, RestTemplate restTemplate) {
         this.userRepository = userRepository;
         this.transactionRepository = transactionRepository;
+        this.restTemplate = restTemplate;
     }
 
     private final List<Transaction> transactions = new CopyOnWriteArrayList<>();
@@ -44,17 +48,21 @@ public class KafkaConsumer {
         }
         //if the transaction is valid
         else {
+
+            Incentive incentive= restTemplate.postForObject("http://localhost:8080/incentive",transaction,Incentive.class);
+            float incentiveAmount=incentive.getAmount();
             //deduct the transaction amount from the sender
             sender.setBalance(sender.getBalance()-transaction.getAmount());
             //add the transaction amount to recipients account
-            recipient.setBalance(recipient.getBalance()+transaction.getAmount());
+            recipient.setBalance(recipient.getBalance()+transaction.getAmount()+incentiveAmount);
             //save it
             userRepository.save(sender);
             userRepository.save(recipient);
             TransactionRecord record=new TransactionRecord(
                     transaction.getSenderId(),
                     transaction.getRecipientId(),
-                    transaction.getAmount()
+                    transaction.getAmount(),
+                    incentiveAmount
             );
             //add the successful transaction data to transaction history db
             transactionRepository.save(record);
